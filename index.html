@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Asana Projects Exporter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; }
+    .container { margin-top: 30px; }
+    .team-section {
+      margin-bottom: 30px;
+      padding: 15px;
+      background-color: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 5px;
+    }
+    .team-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .project-item {
+      margin-left: 20px;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1 class="mb-4">Asana Projects Exporter</h1>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        {% for message in messages %}
+          <div>{{ message }}</div>
+        {% endfor %}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endif %}
+  {% endwith %}
+  
+  <!-- Global select all checkbox -->
+  <div class="mb-3">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="selectAllProjects">
+      <label class="form-check-label" for="selectAllProjects">Select All Projects</label>
+    </div>
+  </div>
+  
+  <!-- Search Bar -->
+  <div class="mb-4">
+    <input type="text" id="projectSearch" class="form-control" placeholder="Search projects...">
+  </div>
+  
+  <!-- Team Filter Dropdown -->
+  <div class="mb-3">
+    <label for="teamFilter" class="form-label">Filter by Team:</label>
+    <select id="teamFilter" class="form-select">
+      <option value="all">All Teams</option>
+      {% for team in teams.keys() %}
+        <option value="{{ team | lower }}">{{ team }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  
+  <form method="POST" action="{{ url_for('export_projects') }}">
+    <!-- Option to export all projects -->
+    <div class="mb-3 form-check">
+      <input class="form-check-input" type="checkbox" id="exportAll" name="export_all" value="all">
+      <label class="form-check-label" for="exportAll">Export All Projects</label>
+    </div>
+    <hr>
+    <!-- Group projects by team -->
+    {% set team_index = 0 %}
+    {% for team, projects in teams.items() %}
+      <div class="team-section" data-team-name="{{ team | lower }}">
+        <div class="team-header">
+          <h4>{{ team }}</h4>
+          <div>
+            <input type="checkbox" class="form-check-input select-team" data-team="{{ team_index }}" id="teamSelect{{ team_index }}">
+            <label class="form-check-label" for="teamSelect{{ team_index }}">Select All</label>
+          </div>
+        </div>
+        <div>
+          {% for project in projects %}
+            <div class="form-check project-item" data-team="{{ team_index }}" data-project-name="{{ project.name | lower }}">
+              <input class="form-check-input project-checkbox" type="checkbox" name="project_ids" value="{{ project.gid }}" id="project{{ project.gid }}">
+              <label class="form-check-label" for="project{{ project.gid }}">{{ project.name }}</label>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% set team_index = team_index + 1 %}
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Export</button>
+  </form>
+</div>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Global "Select All Projects" functionality
+  document.getElementById('selectAllProjects').addEventListener('change', function() {
+    const checked = this.checked;
+    document.querySelectorAll('.project-checkbox').forEach(cb => { cb.checked = checked; });
+    document.querySelectorAll('.select-team').forEach(cb => { cb.checked = checked; });
+  });
+  
+  // Team-level select all functionality (by team index)
+  document.querySelectorAll('.select-team').forEach(teamCheckbox => {
+    teamCheckbox.addEventListener('change', function() {
+      const team = this.getAttribute('data-team');
+      const projectCheckboxes = document.querySelectorAll('.project-item[data-team="' + team + '"] .project-checkbox');
+      projectCheckboxes.forEach(cb => { cb.checked = this.checked; });
+    });
+  });
+  
+  // Search functionality: filter project items by project name
+  document.getElementById('projectSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    document.querySelectorAll('.project-item').forEach(item => {
+      const projectName = item.getAttribute('data-project-name');
+      item.style.display = projectName.includes(searchTerm) ? '' : 'none';
+    });
+  });
+  
+  // Team Filter Dropdown functionality
+  document.getElementById('teamFilter').addEventListener('change', function() {
+    const selectedTeam = this.value;
+    document.querySelectorAll('.team-section').forEach(section => {
+      if (selectedTeam === 'all' || section.getAttribute('data-team-name') === selectedTeam) {
+        section.style.display = '';
+      } else {
+        section.style.display = 'none';
+      }
+    });
+  });
+</script>
+</body>
+</html>
